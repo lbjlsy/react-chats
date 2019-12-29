@@ -3,35 +3,37 @@ import Draggable from 'react-draggable';
 const echarts = require('echarts');
 
 class DraggableList extends React.Component {
-  handleStart = e => {
-    console.log(e, 'handleStart');
+  handleStartBar = e => {
+    // console.log(e, 'handleStartBar');
   };
-  handleDrag = e => {
-    console.log(e, 'handleDrag');
+  handleDragBar = e => {
+    // console.log(e, 'handleDragBar');
   };
-  handleStop = e => {
-    console.log(e, 'handleStop');
+  handleStopBar = e => {
+    // console.log(e, 'handleStopBar');
+    const { handleStopBar } = this.props
+    handleStopBar(e)
   };
   componentDidMount() {
     this.initEchats();
   }
   initEchats = () => {
-    var myChart = echarts.init(document.getElementById('main'));
+    var myChart = echarts.init(document.getElementById('model-bar'));
     // 绘制图表
     let option = {
+      color: ['#76CE8E', '#8C56D3'],
       legend: {},
       tooltip: {},
       dataset: {
-        dimensions: ['product', '2015', '2016', '2017'],
+        dimensions: ['product', '2018', '2019'],
         source: [
-          { product: 'Matcha Latte', '2015': 43.3, '2016': 85.8, '2017': 93.7 },
-          { product: 'Milk Tea', '2015': 83.1, '2016': 73.4, '2017': 55.1 },
-          { product: 'Cheese Cocoa', '2015': 86.4, '2016': 65.2, '2017': 82.5 },
+          { product: 'Matcha Latte', '2018': 85.8, '2019': 93.7 },
+          { product: 'Milk Tea', '2018': 73.4, '2019': 55.1 },
+          { product: 'Cheese Cocoa', '2018': 65.2, '2019': 82.5 },
           {
             product: 'Walnut Brownie',
-            '2015': 72.4,
-            '2016': 53.9,
-            '2017': 39.1
+            '2018': 53.9,
+            '2019': 39.1
           }
         ]
       },
@@ -39,7 +41,7 @@ class DraggableList extends React.Component {
       yAxis: {},
       // Declare several bar series, each will be mapped
       // to a column of dataset.source by default.
-      series: [{ type: 'bar' }, { type: 'bar' }, { type: 'bar' }]
+      series: [{ type: 'bar' }, { type: 'bar' }]
     };
     myChart.setOption(option);
   };
@@ -47,20 +49,19 @@ class DraggableList extends React.Component {
     return (
       <Draggable
         handle=".handle"
-        // defaultPosition={{ x: 10, y:110 }}
-        position={{ x: 25, y:0 }}
+        position={{ x: 25, y: 0 }}
         grid={[25, 25]}
         scale={1}
-        onStart={this.handleStart}
-        onDrag={this.handleDrag}
-        onStop={this.handleStop}
+        onStart={this.handleStartBar}
+        onDrag={this.handleDragBar}
+        onStop={this.handleStopBar}
+        id="model-bar"
       >
-        <div>
-          {/* <div>This readme is really dragging on...</div> */}
-          <div className="handle" id="main" style={{ width: '230px', height: '230px' }}>
-            Drag from here
-          </div>
-        </div>
+        <div
+          className="handle"
+          id="model-bar"
+          style={{ width: '250px', height: '250px' }}
+        ></div>
       </Draggable>
     );
   }
