@@ -94,7 +94,6 @@ class App extends React.Component {
   };
   covertDataField = (data, monthHeader) => {
     const keys = Object.keys(data);
-    const totalMonthData = [];
     keys.forEach(key => {
       const typeKeys = Object.keys(data[key]);
       typeKeys.forEach(brandKey => {
@@ -116,7 +115,6 @@ class App extends React.Component {
             }
           });
         });
-        const monthDataKeys = Object.keys(monthData);
         monthHeader.forEach(month => {
           if (monthData[month]) {
             monthArr.push(monthData[month]);
@@ -128,10 +126,8 @@ class App extends React.Component {
           }
         });
         data[key][brandKey] = monthArr;
-        // data[key][brandKey] = monthData;
       });
     });
-    console.log(totalMonthData, 'totalMonthData');
   };
   covertColumns = data => {
     console.log(data, 'data...');
