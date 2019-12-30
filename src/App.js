@@ -92,25 +92,76 @@ class App extends React.Component {
       }
     }
   };
-
-  covertColumns = data => {
+  covertDataField = (data, monthHeader) => {
     const keys = Object.keys(data);
+    const totalMonthData = [];
     keys.forEach(key => {
-      const brandKeys = Object.keys(data[key]);
-      brandKeys.forEach(brandKey => {
-        data[key][brandKey].sort(function(a, b) {
-          const aMonth = a.DATE.slice(0, a.DATE.lastIndexOf('/'));
-          const bMonth = b.DATE.slice(0, b.DATE.lastIndexOf('/'));
-          return new Date(aMonth) > new Date(bMonth) ? 1 : -1;
+      const typeKeys = Object.keys(data[key]);
+      typeKeys.forEach(brandKey => {
+        const monthArr = [];
+        const monthData = {};
+        monthHeader.forEach(month => {
+          data[key][brandKey].forEach((item, idx) => {
+            if (month === item.DATE.slice(0, item.DATE.lastIndexOf('/'))) {
+              if (!monthData[month]) {
+                monthData[month] = month;
+                monthData[month] = {
+                  [`${month}PRICE`]: Number(item.PRICE),
+                  [`${month}COUNT`]: Number(item.COUNT)
+                };
+              } else {
+                monthData[month][`${month}PRICE`] += Number(item.PRICE);
+                monthData[month][`${month}COUNT`] += Number(item.COUNT);
+              }
+            }
+          });
         });
+        const monthDataKeys = Object.keys(monthData);
+        monthHeader.forEach(month => {
+          if (monthData[month]) {
+            monthArr.push(monthData[month]);
+          } else {
+            monthArr.push({
+              [`${month}PRICE`]: 0,
+              [`${month}COUNT`]: 0
+            });
+          }
+        });
+        data[key][brandKey] = monthArr;
+        // data[key][brandKey] = monthData;
       });
     });
+    console.log(totalMonthData, 'totalMonthData');
+  };
+  covertColumns = data => {
+    console.log(data, 'data...');
+    const month = [];
+    data.forEach((item, idx) => {
+      const monthTwo = item.DATE.slice(0, item.DATE.lastIndexOf('/'));
+      if (!month.includes(monthTwo)) {
+        month.push(monthTwo);
+      }
+    });
+    month.sort((a, b) => (new Date(a) > new Date(b) ? 1 : -1));
+    return month;
+    // const keys = Object.keys(data);
+    // keys.forEach(key => {
+    //   const brandKeys = Object.keys(data[key]);
+    //   brandKeys.forEach(brandKey => {
+    //     data[key][brandKey].sort(function(a, b) {
+    //       const aMonth = a.DATE.slice(0, a.DATE.lastIndexOf('/'));
+    //       const bMonth = b.DATE.slice(0, b.DATE.lastIndexOf('/'));
+    //       return new Date(aMonth) > new Date(bMonth) ? 1 : -1;
+    //     });
+    //   });
+    // });
   };
   columnHandleChange = value => {
-    console.log(value, 'value');
     if (value === 'month') {
       const brand = {};
       const { data } = this.state;
+      const monthHeader = this.covertColumns(data);
+      console.log(monthHeader, 'monthHeader');
       data.map((item, idx) => {
         if (!brand[item.BRAND]) {
           brand[item.BRAND] = [];
@@ -133,7 +184,7 @@ class App extends React.Component {
         });
         brand[key] = brandType;
       });
-      this.covertColumns(brand);
+      this.covertDataField(brand, monthHeader);
       console.log(brand, 'brand');
     }
   };
