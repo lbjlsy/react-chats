@@ -16,7 +16,9 @@ class App extends React.Component {
     tableBody: [],
     columnsOption: [],
     selectedOption: [],
-    dateOption: ['year', 'month', 'date']
+    dateOption: ['year', 'month', 'date'],
+    selectedColumnsOption: [],
+    monthHeader: []
   };
   uploadProcess = boolean => {
     this.setState({
@@ -26,13 +28,9 @@ class App extends React.Component {
   uploadSuccess = ({ tableHeader, tableBody }) => {
     let columns = [];
     let columnsOption = [];
-    let selectedOption = [];
     tableHeader.forEach((item, idx) => {
       columns.push({ title: item, dataIndex: item, key: idx });
       columnsOption.push(item);
-      if (item) {
-        selectedOption.push(item);
-      }
     });
     this.setState({
       columns,
@@ -40,8 +38,10 @@ class App extends React.Component {
       tableHeader,
       tableBody,
       columnsOption,
-      selectedOption
+      selectedOption: ['COUNT', 'PRICE'],
+      selectedColumnsOption: ['month']
     });
+    this.columnHandleChange('month');
   };
   dateChange = () => {};
   initEchartBar = () => {
@@ -137,7 +137,6 @@ class App extends React.Component {
     });
   };
   covertColumns = data => {
-    console.log(data, 'data...');
     const month = [];
     data.forEach((item, idx) => {
       const monthTwo = item.DATE.slice(0, item.DATE.lastIndexOf('/'));
@@ -147,37 +146,39 @@ class App extends React.Component {
     });
     month.sort((a, b) => (new Date(a) > new Date(b) ? 1 : -1));
     return month;
-    // const keys = Object.keys(data);
-    // keys.forEach(key => {
-    //   const brandKeys = Object.keys(data[key]);
-    //   brandKeys.forEach(brandKey => {
-    //     data[key][brandKey].sort(function(a, b) {
-    //       const aMonth = a.DATE.slice(0, a.DATE.lastIndexOf('/'));
-    //       const bMonth = b.DATE.slice(0, b.DATE.lastIndexOf('/'));
-    //       return new Date(aMonth) > new Date(bMonth) ? 1 : -1;
-    //     });
-    //   });
-    // });
+  };
+  covertTableHeader = (columns, rows) => {
+    let data = [{ title: 'Model', dataIndex: 'name', key: 'id', className: 'model-class' }];
+    columns.forEach((list, idx) => {
+      const row = rows.map((item, idx) => {
+        const column = {};
+        column.title = item;
+        column.dataIndex = `${list}${item}`;
+        column.key = `${list}${item}`;
+        return column;
+      });
+      data.push({ title: list, children: row, key: list });
+    });
+    return data;
   };
   columnHandleChange = value => {
     if (value === 'month') {
-      const brand = {};
+      const tableBodyData = {};
       const { data } = this.state;
       const monthHeader = this.covertColumns(data);
-      console.log(monthHeader, 'monthHeader');
-      data.map((item, idx) => {
-        if (!brand[item.BRAND]) {
-          brand[item.BRAND] = [];
-          brand[item.BRAND].push(item);
+      data.forEach((item, idx) => {
+        if (!tableBodyData[item.BRAND]) {
+          tableBodyData[item.BRAND] = [];
+          tableBodyData[item.BRAND].push(item);
         } else {
-          brand[item.BRAND].push(item);
+          tableBodyData[item.BRAND].push(item);
         }
       });
 
-      const keys = Object.keys(brand);
+      const keys = Object.keys(tableBodyData);
       keys.forEach(key => {
         const brandType = {};
-        brand[key].forEach(item => {
+        tableBodyData[key].forEach(item => {
           if (!brandType[item.TYPE]) {
             brandType[item.TYPE] = [];
             brandType[item.TYPE].push(item);
@@ -185,10 +186,36 @@ class App extends React.Component {
             brandType[item.TYPE].push(item);
           }
         });
-        brand[key] = brandType;
+        tableBodyData[key] = brandType;
       });
-      this.covertDataField(brand, monthHeader);
-      console.log(brand, 'brand');
+      this.covertDataField(tableBodyData, monthHeader);
+      let id = 0
+      const brandKeys = Object.keys(tableBodyData);
+      const finalData = brandKeys.map(brandKey => {
+        const typeKeys = Object.keys(tableBodyData[brandKey]);
+        const typeData = typeKeys.map(typeKey => {
+          const nameKeys = Object.keys(tableBodyData[brandKey][typeKey]);
+          const typeArr = nameKeys.map(nameKey => {
+            const nameArr = tableBodyData[brandKey][typeKey][nameKey].reduce(
+              (acc, cur) => {
+                return Object.assign(acc, cur);
+              }
+            );
+            return { name: nameKey, ...nameArr, id: ++id };
+          });
+          return { name: typeKey, children: typeArr, id: ++id };
+        });
+        return { name: brandKey, children: typeData, id: ++id };
+      });
+      const {
+        covertTableHeader,
+        state: { selectedOption }
+      } = this;
+      this.setState({
+        monthHeader: covertTableHeader(monthHeader, selectedOption),
+        tableBodyData: finalData
+      });
+      console.log(finalData, 'brandData');
     }
   };
   rowHandleChange = value => {
@@ -203,80 +230,70 @@ class App extends React.Component {
   };
   render() {
     const {
-      data,
-      columns,
+      tableBodyData,
+      monthHeader,
       tableLoading,
       columnsOption,
+      selectedColumnsOption,
       selectedOption,
       dateOption
     } = this.state;
     return (
-      <div className="App">
-        <Layout style={{ minHeight: '100vh' }}>
-          <Layout style={{ margin: '20px' }}>
-            <Sider
-              width="300"
-              style={{ textAlign: 'center', backgroundColor: '#f0f2f5' }}
+      <div className="App" style={{ minHeight: '100vh' }}>
+        <Sider
+          width="300"
+          style={{ textAlign: 'center', backgroundColor: '#f0f2f5' }}
+        >
+          <div className="left">
+            <span>Chart Type</span>
+            <DraggableList handleStopBar={this.handleStopBar} />
+          </div>
+        </Sider>
+        <div style={{ textAlign: 'center' }}>
+          <UploadCSV
+            uploadProcess={this.uploadProcess}
+            uploadSuccess={this.uploadSuccess}
+          />
+        </div>
+        <Tables
+          data={tableBodyData}
+          columns={monthHeader}
+          loading={tableLoading}
+        />
+        Properties
+        <Form layout="vertical">
+          <Form.Item label="Columns Fields" required>
+            <Select
+              placeholder="Please select"
+              onChange={this.columnHandleChange}
+              value={selectedColumnsOption}
             >
-              <div className="left">
-                <span>Chart Type</span>
-                <DraggableList handleStopBar={this.handleStopBar} />
-              </div>
-            </Sider>
-            <Content>
-              <Row>
-                <Col span={19}>
-                  <div style={{ textAlign: 'center' }}>
-                    <UploadCSV
-                      uploadProcess={this.uploadProcess}
-                      uploadSuccess={this.uploadSuccess}
-                    />
-                  </div>
-                  <Tables
-                    data={data}
-                    columns={columns}
-                    loading={tableLoading}
-                  />
-                </Col>
-                <Col span={4} offset={1}>
-                  Properties
-                  <Form layout="vertical">
-                    <Form.Item label="Columns Fields" required>
-                      <Select
-                        placeholder="Please select"
-                        onChange={this.columnHandleChange}
-                      >
-                        {dateOption.map((item, idx) => (
-                          <Option key={idx} value={item}>
-                            {item}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item label="Rows Fields" required>
-                      <Select
-                        mode="multiple"
-                        style={{ width: '100%' }}
-                        placeholder="Please select"
-                        value={selectedOption}
-                        onChange={this.rowHandleChange}
-                      >
-                        {columnsOption.map((item, idx) => (
-                          <Option key={idx} value={item}>
-                            {item}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Form>
-                </Col>
-              </Row>
-              <div style={{ width: '100%', minHeight: '50vh' }}>
-                <div id="bar" style={{ width: '830px', height: '530px' }}></div>
-              </div>
-            </Content>
-          </Layout>
-        </Layout>
+              {dateOption.map((item, idx) => (
+                <Option key={idx} value={item}>
+                  {item}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item label="Rows Fields" required>
+            <Select
+              mode="multiple"
+              style={{ width: '100%' }}
+              placeholder="Please select"
+              value={selectedOption}
+              onChange={this.rowHandleChange}
+            >
+              {columnsOption.map((item, idx) => (
+                <Option key={idx} value={item}>
+                  {item}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+        <div style={{ width: '100%', minHeight: '50vh' }}>
+          <div id="bar" style={{ width: '830px', height: '530px' }}></div>
+        </div>
       </div>
     );
   }

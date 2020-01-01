@@ -41,3 +41,6 @@
   width: 300px;
   margin-top: 500px;
 }
+.model-class {
+  min-width: 250px;
+}
