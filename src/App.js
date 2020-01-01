@@ -97,35 +97,42 @@ class App extends React.Component {
     keys.forEach(key => {
       const typeKeys = Object.keys(data[key]);
       typeKeys.forEach(brandKey => {
-        const monthArr = [];
         const monthData = {};
-        monthHeader.forEach(month => {
-          data[key][brandKey].forEach((item, idx) => {
-            if (month === item.DATE.slice(0, item.DATE.lastIndexOf('/'))) {
-              if (!monthData[month]) {
-                monthData[month] = month;
-                monthData[month] = {
-                  [`${month}PRICE`]: Number(item.PRICE),
-                  [`${month}COUNT`]: Number(item.COUNT)
-                };
-              } else {
-                monthData[month][`${month}PRICE`] += Number(item.PRICE);
-                monthData[month][`${month}COUNT`] += Number(item.COUNT);
-              }
-            }
-          });
-        });
-        monthHeader.forEach(month => {
-          if (monthData[month]) {
-            monthArr.push(monthData[month]);
+        data[key][brandKey].forEach((item, idx) => {
+          if (!monthData[item.NAME]) {
+            monthData[item.NAME] = [];
+            monthData[item.NAME].push(item);
           } else {
-            monthArr.push({
-              [`${month}PRICE`]: 0,
-              [`${month}COUNT`]: 0
-            });
+            monthData[item.NAME].push(item);
           }
         });
-        data[key][brandKey] = monthArr;
+        const monthDataKeys = Object.keys(monthData);
+        monthDataKeys.forEach(key => {
+          const itemData = {};
+          const itemArr = [];
+          monthHeader.forEach(month => {
+            monthData[key].forEach(item => {
+              if (month === item.DATE.slice(0, item.DATE.lastIndexOf('/'))) {
+                if (!itemData[month]) {
+                  itemData[month] = month;
+                  itemData[month] = {
+                    [`${month}PRICE`]: Number(item.PRICE),
+                    [`${month}COUNT`]: Number(item.COUNT)
+                  };
+                } else {
+                  itemData[month][`${month}PRICE`] += Number(item.PRICE);
+                  itemData[month][`${month}COUNT`] += Number(item.COUNT);
+                }
+              }
+            });
+            if (!itemData[month]) {
+              itemData[month] = { [`${month}PRICE`]: 0, [`${month}COUNT`]: 0 };
+            }
+            itemArr.push(itemData[month]);
+          });
+          monthData[key] = itemArr;
+        });
+        data[key][brandKey] = monthData;
       });
     });
   };
