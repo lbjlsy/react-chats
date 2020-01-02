@@ -92,7 +92,15 @@ class App extends React.Component {
       }
     }
   };
-  covertDataField = (data, monthHeader) => {
+  currentDataFormat = (item, type) => {
+    if (type === 'month') {
+      return item.DATE.slice(0, item.DATE.lastIndexOf('/'))
+    } else if (type === 'year') {
+      return item.DATE.slice(0, item.DATE.indexOf('/'))
+    }
+  }
+  covertDataField = (data, monthHeader, dateType) => {
+    const { currentDataFormat } = this
     const keys = Object.keys(data);
     keys.forEach(key => {
       const typeKeys = Object.keys(data[key]);
@@ -112,7 +120,7 @@ class App extends React.Component {
           const itemArr = [];
           monthHeader.forEach(month => {
             monthData[key].forEach(item => {
-              if (month === item.DATE.slice(0, item.DATE.lastIndexOf('/'))) {
+              if (month === currentDataFormat(item, dateType)) {
                 if (!itemData[month]) {
                   itemData[month] = month;
                   itemData[month] = {
@@ -136,19 +144,23 @@ class App extends React.Component {
       });
     });
   };
-  covertColumns = data => {
-    const month = [];
+  covertColumns = (data, dateType) => {
+    const { currentDataFormat } = this
+    const date = [];
     data.forEach((item, idx) => {
-      const monthTwo = item.DATE.slice(0, item.DATE.lastIndexOf('/'));
-      if (!month.includes(monthTwo)) {
-        month.push(monthTwo);
+      let currentDate;
+      currentDate = currentDataFormat(item, dateType)
+      if (!date.includes(currentDate)) {
+        date.push(currentDate);
       }
     });
-    month.sort((a, b) => (new Date(a) > new Date(b) ? 1 : -1));
-    return month;
+    date.sort((a, b) => (new Date(a) > new Date(b) ? 1 : -1));
+    return date;
   };
   covertTableHeader = (columns, rows) => {
-    let data = [{ title: 'Model', dataIndex: 'name', key: 'id', className: 'model-class' }];
+    let data = [
+      { title: 'Model', dataIndex: 'name', key: 'id', className: 'model-class' }
+    ];
     columns.forEach((list, idx) => {
       const row = rows.map((item, idx) => {
         const column = {};
@@ -162,61 +174,60 @@ class App extends React.Component {
     return data;
   };
   columnHandleChange = value => {
-    if (value === 'month') {
-      const tableBodyData = {};
-      const { data } = this.state;
-      const monthHeader = this.covertColumns(data);
-      data.forEach((item, idx) => {
-        if (!tableBodyData[item.BRAND]) {
-          tableBodyData[item.BRAND] = [];
-          tableBodyData[item.BRAND].push(item);
+    const tableBodyData = {};
+    const { data } = this.state;
+    const monthHeader = this.covertColumns(data, value);
+    data.forEach((item, idx) => {
+      if (!tableBodyData[item.BRAND]) {
+        tableBodyData[item.BRAND] = [];
+        tableBodyData[item.BRAND].push(item);
+      } else {
+        tableBodyData[item.BRAND].push(item);
+      }
+    });
+
+    const keys = Object.keys(tableBodyData);
+    keys.forEach(key => {
+      const brandType = {};
+      tableBodyData[key].forEach(item => {
+        if (!brandType[item.TYPE]) {
+          brandType[item.TYPE] = [];
+          brandType[item.TYPE].push(item);
         } else {
-          tableBodyData[item.BRAND].push(item);
+          brandType[item.TYPE].push(item);
         }
       });
-
-      const keys = Object.keys(tableBodyData);
-      keys.forEach(key => {
-        const brandType = {};
-        tableBodyData[key].forEach(item => {
-          if (!brandType[item.TYPE]) {
-            brandType[item.TYPE] = [];
-            brandType[item.TYPE].push(item);
-          } else {
-            brandType[item.TYPE].push(item);
-          }
+      tableBodyData[key] = brandType;
+    });
+    this.covertDataField(tableBodyData, monthHeader, value);
+    let id = 0;
+    const brandKeys = Object.keys(tableBodyData);
+    const finalData = brandKeys.map(brandKey => {
+      const typeKeys = Object.keys(tableBodyData[brandKey]);
+      const typeData = typeKeys.map(typeKey => {
+        const nameKeys = Object.keys(tableBodyData[brandKey][typeKey]);
+        const typeArr = nameKeys.map(nameKey => {
+          const nameArr = tableBodyData[brandKey][typeKey][nameKey].reduce(
+            (acc, cur) => {
+              return Object.assign(acc, cur);
+            }
+          );
+          return { name: nameKey, ...nameArr, id: ++id };
         });
-        tableBodyData[key] = brandType;
+        return { name: typeKey, children: typeArr, id: ++id };
       });
-      this.covertDataField(tableBodyData, monthHeader);
-      let id = 0
-      const brandKeys = Object.keys(tableBodyData);
-      const finalData = brandKeys.map(brandKey => {
-        const typeKeys = Object.keys(tableBodyData[brandKey]);
-        const typeData = typeKeys.map(typeKey => {
-          const nameKeys = Object.keys(tableBodyData[brandKey][typeKey]);
-          const typeArr = nameKeys.map(nameKey => {
-            const nameArr = tableBodyData[brandKey][typeKey][nameKey].reduce(
-              (acc, cur) => {
-                return Object.assign(acc, cur);
-              }
-            );
-            return { name: nameKey, ...nameArr, id: ++id };
-          });
-          return { name: typeKey, children: typeArr, id: ++id };
-        });
-        return { name: brandKey, children: typeData, id: ++id };
-      });
-      const {
-        covertTableHeader,
-        state: { selectedOption }
-      } = this;
-      this.setState({
-        monthHeader: covertTableHeader(monthHeader, selectedOption),
-        tableBodyData: finalData
-      });
-      console.log(finalData, 'brandData');
-    }
+      return { name: brandKey, children: typeData, id: ++id };
+    });
+    const {
+      covertTableHeader,
+      state: { selectedOption }
+    } = this;
+    this.setState({
+      selectedColumnsOption: value,
+      monthHeader: covertTableHeader(monthHeader, selectedOption),
+      tableBodyData: finalData
+    });
+    console.log(finalData, 'brandData');
   };
   rowHandleChange = value => {
     let columns = [];
