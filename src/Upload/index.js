@@ -40,7 +40,8 @@ class UploadCSV extends React.Component {
           let itemArr = rowCells[rowCell].split(';');
           // 表格内容
           let data = {};
-          /* eslint-disable */ 
+          /* eslint-disable */
+
           itemArr.forEach((item, idx) => {
             if (idx === 9) {
               data[tableHeader[idx]] = formatDate(
@@ -56,7 +57,7 @@ class UploadCSV extends React.Component {
         }
       }
     }
-    
+
     this.setState(
       {
         tableHeader: tableHeader,
@@ -90,7 +91,7 @@ class UploadCSV extends React.Component {
     };
     return (
       <Upload {...props}>
-        <Button>
+        <Button style={{ marginTop: '10px'}}>
           <Icon type="upload" /> Click to Upload
         </Button>
       </Upload>

@@ -3,8 +3,7 @@ import './App.css';
 import DraggableList from './Draggable';
 import UploadCSV from './Upload';
 import Tables from './Table';
-import { Layout, Select, Row, Col, Form, message } from 'antd';
-const { Sider, Content } = Layout;
+import { Select, Form, message } from 'antd';
 const { Option } = Select;
 const echarts = require('echarts');
 class App extends React.Component {
@@ -16,9 +15,12 @@ class App extends React.Component {
     tableBody: [],
     columnsOption: [],
     selectedOption: [],
-    dateOption: ['year', 'month', 'date'],
+    dateOption: ['year', 'month'],
     selectedColumnsOption: [],
-    monthHeader: []
+    monthHeader: [],
+    echartBarData: [],
+    echartData: {},
+    echartIsRender: false
   };
   uploadProcess = boolean => {
     this.setState({
@@ -43,32 +45,85 @@ class App extends React.Component {
     });
     this.columnHandleChange('month');
   };
-  dateChange = () => {};
   initEchartBar = () => {
-    var myChart = echarts.init(document.getElementById('bar'));
-    // 绘制图表
+    const { echartBarData, echartData } = this.state;
+    const typeKeys = Object.keys(echartData);
+    const finalEchartData = { SUV: [], Car: [] };
+    typeKeys.forEach(typeKey => {
+      echartData[typeKey].map(list => {
+        echartBarData.forEach((monthKey, idx) => {
+          list.forEach(item => {
+            for (const key in item) {
+              if (item.hasOwnProperty(key) && key.indexOf('PRICE') !== -1) {
+                if (key.indexOf(monthKey) !== -1) {
+                  if (!finalEchartData[typeKey][idx]) {
+                    finalEchartData[typeKey][idx] = 0
+                  }
+                  finalEchartData[typeKey][idx] += Number(item[key])
+                }
+              }
+            }
+          });
+        });
+      });
+    });
+    let myChart = echarts.init(document.getElementById('bar'));
     let option = {
       color: ['#76CE8E', '#8C56D3'],
-      legend: {},
-      tooltip: {},
-      dataset: {
-        dimensions: ['product', '2018', '2019'],
-        source: [
-          { product: 'Matcha Latte', '2018': 85.8, '2019': 93.7 },
-          { product: 'Milk Tea', '2018': 73.4, '2019': 55.1 },
-          { product: 'Cheese Cocoa', '2018': 65.2, '2019': 82.5 },
-          {
-            product: 'Walnut Brownie',
-            '2018': 53.9,
-            '2019': 39.1
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'cross',
+          crossStyle: {
+            color: '#999'
           }
-        ]
+        }
       },
-      xAxis: { type: 'category' },
-      yAxis: {},
-      series: [{ type: 'bar' }, { type: 'bar' }]
+      toolbox: {
+        feature: {
+          dataView: { show: true, readOnly: false },
+          magicType: { show: true, type: ['line', 'bar'] },
+          restore: { show: true },
+          saveAsImage: { show: true }
+        }
+      },
+      legend: {
+        data: ['Car', 'SUV', '平均温度']
+      },
+      xAxis: [
+        {
+          type: 'category',
+          data: echartBarData,
+          axisPointer: {
+            type: 'shadow'
+          }
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value'
+        },
+        {
+          type: 'value'
+        }
+      ],
+      series: [
+        {
+          name: 'Car',
+          type: 'bar',
+          data: finalEchartData.Car
+        },
+        {
+          name: 'SUV',
+          type: 'bar',
+          data: finalEchartData.SUV
+        }
+      ]
     };
     myChart.setOption(option);
+    this.setState({
+      echartIsRender: true
+    })
   };
   handleStopBar = event => {
     // 480 430
@@ -86,7 +141,7 @@ class App extends React.Component {
       message.warn('请上传CSV格式数据!', 1);
       return;
     }
-    if (clientX > 480 && clientY > 430) {
+    if (clientX > 480 && clientY > 230) {
       if (id.indexOf('bar') > -1) {
         this.initEchartBar();
       }
@@ -94,13 +149,13 @@ class App extends React.Component {
   };
   currentDataFormat = (item, type) => {
     if (type === 'month') {
-      return item.DATE.slice(0, item.DATE.lastIndexOf('/'))
+      return item.DATE.slice(0, item.DATE.lastIndexOf('/'));
     } else if (type === 'year') {
-      return item.DATE.slice(0, item.DATE.indexOf('/'))
+      return item.DATE.slice(0, item.DATE.indexOf('/'));
     }
-  }
-  covertDataField = (data, monthHeader, dateType) => {
-    const { currentDataFormat } = this
+  };
+  covertRowDataField = (data, monthHeader, dateType) => {
+    const { currentDataFormat } = this;
     const keys = Object.keys(data);
     keys.forEach(key => {
       const typeKeys = Object.keys(data[key]);
@@ -144,12 +199,12 @@ class App extends React.Component {
       });
     });
   };
-  covertColumns = (data, dateType) => {
-    const { currentDataFormat } = this
+  sortColumns = (data, dateType) => {
+    const { currentDataFormat } = this;
     const date = [];
     data.forEach((item, idx) => {
       let currentDate;
-      currentDate = currentDataFormat(item, dateType)
+      currentDate = currentDataFormat(item, dateType);
       if (!date.includes(currentDate)) {
         date.push(currentDate);
       }
@@ -176,7 +231,10 @@ class App extends React.Component {
   columnHandleChange = value => {
     const tableBodyData = {};
     const { data } = this.state;
-    const monthHeader = this.covertColumns(data, value);
+    const monthHeader = this.sortColumns(data, value);
+    this.setState({
+      echartBarData: monthHeader
+    });
     data.forEach((item, idx) => {
       if (!tableBodyData[item.BRAND]) {
         tableBodyData[item.BRAND] = [];
@@ -199,9 +257,10 @@ class App extends React.Component {
       });
       tableBodyData[key] = brandType;
     });
-    this.covertDataField(tableBodyData, monthHeader, value);
+    this.covertRowDataField(tableBodyData, monthHeader, value);
     let id = 0;
     const brandKeys = Object.keys(tableBodyData);
+    const echartData = { SUV: [], Car: [] };
     const finalData = brandKeys.map(brandKey => {
       const typeKeys = Object.keys(tableBodyData[brandKey]);
       const typeData = typeKeys.map(typeKey => {
@@ -214,6 +273,11 @@ class App extends React.Component {
           );
           return { name: nameKey, ...nameArr, id: ++id };
         });
+        if (typeKey === 'Car') {
+          echartData.Car.push(typeArr);
+        } else if (typeKey === 'SUV') {
+          echartData.SUV.push(typeArr);
+        }
         return { name: typeKey, children: typeArr, id: ++id };
       });
       return { name: brandKey, children: typeData, id: ++id };
@@ -225,9 +289,14 @@ class App extends React.Component {
     this.setState({
       selectedColumnsOption: value,
       monthHeader: covertTableHeader(monthHeader, selectedOption),
-      tableBodyData: finalData
+      tableBodyData: finalData,
+      echartData
+    }, () => {
+        if (this.state.echartIsRender) {
+          this.initEchartBar()
+        }
     });
-    console.log(finalData, 'brandData');
+    
   };
   rowHandleChange = value => {
     let columns = [];
@@ -249,61 +318,60 @@ class App extends React.Component {
       selectedOption,
       dateOption
     } = this.state;
+    const formItemLayout = {
+      labelCol: { span: 2 },
+      wrapperCol: { span: 4 }
+    };
     return (
       <div className="App" style={{ minHeight: '100vh' }}>
-        <Sider
-          width="300"
-          style={{ textAlign: 'center', backgroundColor: '#f0f2f5' }}
-        >
-          <div className="left">
-            <span>Chart Type</span>
-            <DraggableList handleStopBar={this.handleStopBar} />
-          </div>
-        </Sider>
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', overflow: 'hidden' }}>
           <UploadCSV
             uploadProcess={this.uploadProcess}
             uploadSuccess={this.uploadSuccess}
           />
+          <Form layout="vertical" style={{ margin: '20px' }}>
+            <Form.Item label="Columns Fields" {...formItemLayout} required>
+              <Select
+                placeholder="Please select"
+                onChange={this.columnHandleChange}
+                value={selectedColumnsOption}
+              >
+                {dateOption.map((item, idx) => (
+                  <Option key={idx} value={item}>
+                    {item}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item {...formItemLayout} label="Rows Fields" required>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                disabled
+                placeholder="Please select"
+                value={selectedOption}
+                onChange={this.rowHandleChange}
+              >
+                {columnsOption.map((item, idx) => (
+                  <Option key={idx} value={item}>
+                    {item}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Form>
         </div>
         <Tables
           data={tableBodyData}
           columns={monthHeader}
           loading={tableLoading}
         />
-        Properties
-        <Form layout="vertical">
-          <Form.Item label="Columns Fields" required>
-            <Select
-              placeholder="Please select"
-              onChange={this.columnHandleChange}
-              value={selectedColumnsOption}
-            >
-              {dateOption.map((item, idx) => (
-                <Option key={idx} value={item}>
-                  {item}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item label="Rows Fields" required>
-            <Select
-              mode="multiple"
-              style={{ width: '100%' }}
-              placeholder="Please select"
-              value={selectedOption}
-              onChange={this.rowHandleChange}
-            >
-              {columnsOption.map((item, idx) => (
-                <Option key={idx} value={item}>
-                  {item}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Form>
-        <div style={{ width: '100%', minHeight: '50vh' }}>
-          <div id="bar" style={{ width: '830px', height: '530px' }}></div>
+        <div>
+          <span style={{ marginLeft: '30px' }}>Chart Type</span>
+          <DraggableList handleStopBar={this.handleStopBar} />
+          <div style={{ width: '100%', minHeight: '50vh' }}>
+            <div id="bar" style={{ minWidth: '100vw', height: '530px' }}></div>
+          </div>
         </div>
       </div>
     );
